@@ -1,0 +1,245 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Automated BLESS CFN'
+
+# Input Parameters
+Parameters:
+  ami:
+    Type: String
+    Description: The AMI id to use
+  key:
+    Type: String
+    Description: Your host key
+  kmsalias:
+    Type: String
+    Description: Your kms alias
+  subnets:
+    Type: CommaDelimitedList
+    Description: The List of subnets to attempt to launch a bastion host in.
+  password:
+    Type: String
+    Description: Password for your key.
+    NoEcho: true
+  public:
+    Type: String
+    Description: Do you wnt a public IP for this bastion?.
+    Default: false    
+  user:
+    Type: String
+    Description: The user this bastion is for.   
+  vpc:
+    Type: String
+    Description: The VPC ID for the Bastion host, usually the cloud ops build VPC
+  yourcidr:
+    Type: String
+    Description: The CIDR fromwhich you are connecting to the Bastion   
+  zone:
+    Type: String
+    Description: The DNS zone to use when creating a dns entry.  If this is blank, no entry will be created.
+    
+Resources:
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join [-, [bastion-sg, !Ref user]]
+      GroupDescription: Enable SSH access to bastion via port 22
+      VpcId: !Ref vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref yourcidr
+        - IpProtocol: icmp
+          FromPort: 3
+          ToPort: 4
+          CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: !Join [-, [bastion-sg, !Ref user]]
+          
+  BastionInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+         - !Ref BastionIamRole
+         
+  BastionIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - ssm.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      RoleName: BastionIamRole
+      
+  BastionIamPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: BastionServerIamPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+#              - kms:Decrypt
+#              - kms:GenerateDataKey
+#              - kms:ListKeys
+#              - kms:Decrypt
+              - kms:CreateGrant
+              - kms:GenerateRandom
+              - kms:Encrypt
+              - kms:ListAliases
+            Resource: !Join [':',['arn:aws:kms',!Ref 'AWS::Region',!Ref 'AWS::AccountId',alias/,!Ref kmsalias]]
+#              - kms:DescribeKey
+#            Resource: !Ref credstashkms
+#          - Effect: Allow
+#            Action:
+#              - dynamodb:DeleteItem
+#              - dynamodb:GetItem
+#              - dynamodb:PutItem
+#              - dynamodb:Query
+#              - dynamodb:Scan
+#            Resource: !Ref credstashdb
+          - Effect: Allow
+            Action:
+              - route53:ListHostedZonesByName
+              - route53:ListResourceRecordSets
+              - route53:ChangeResourceRecordSets
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - ec2:DescribeTags
+              - ec2:DescribeInstanceStatus
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - autoscaling:DescribeAutoScalingInstances
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogStream
+              - logs:DescribeLogGroups
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - ssm:DescribeAssociation
+              - ssm:GetDeployablePatchSnapshotForInstance
+              - ssm:GetDocument
+              - ssm:GetManifest
+              - ssm:GetParameters
+              - ssm:ListAssociations
+              - ssm:ListInstanceAssociations
+              - ssm:PutInventory
+              - ssm:PutComplianceItems
+              - ssm:PutConfigurePackageResult
+              - ssm:UpdateAssociationStatus
+              - ssm:UpdateInstanceAssociationStatus
+              - ssm:UpdateInstanceInformation
+            Resource: '*'            
+          - Effect: Allow
+            Action:
+              - ec2messages:AcknowledgeMessage
+              - ec2messages:DeleteMessage
+              - ec2messages:FailMessage
+              - ec2messages:GetEndpoint
+              - ec2messages:GetMessages
+              - ec2messages:SendReply     
+            Resource: '*'            
+          - Effect: Allow
+            Action:  
+              - cloudwatch:PutMetricData
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - ds:CreateComputer
+              - ds:DescribeDirectories
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:AbortMultipartUpload
+              - s3:ListMultipartUploadParts
+              - s3:ListBucket
+              - s3:ListBucketMultipartUploads
+            Resource: '*'
+      Roles:
+        - !Ref BastionIamRole
+        
+#
+#  Create Bastions.  Place them in an ASG
+#
+
+  BastionAsg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      DesiredCapacity: 1
+      HealthCheckGracePeriod: 300
+      LaunchConfigurationName: !Ref BastionLc
+      MaxSize: 1
+      MinSize: 1
+      Tags:
+        -
+          Key: node
+          Value: bastion
+          PropagateAtLaunch: true
+        -
+          Key: Name
+          Value: !Join ['',[bastion-, !Ref user]]
+          PropagateAtLaunch: true
+        -
+          Key: User
+          Value: !Ref user
+          PropagateAtLaunch: true
+      VPCZoneIdentifier: !Ref subnets
+
+  BastionLc:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: !Ref public
+      IamInstanceProfile: !Ref BastionInstanceProfile
+      ImageId: !Ref ami
+      InstanceType: t2.micro
+      KeyName: !Ref key
+      SecurityGroups:
+        - !GetAtt BastionSecurityGroup.GroupId
+      UserData: 
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          sudo -i -u ec2-user /bin/bash -xe << EOF
+          cd bless
+          virtualenv venv
+          source venv/bin/activate
+          ssh-keygen -t rsa -b 4096 -f bless-ca -C "SSH CA Key" -N ${password}
+          aws kms encrypt --region ${AWS::Region} --key-id alias/${kmsalias} --plaintext ${password} --output text --query CiphertextBlob > YourKmsEncryptedPassword.kms
+          cp bless/config/bless_deploy_example.cfg bless/config/bless_deploy.cfg
+          sed -i 's|us-east-1_password = <INSERT_US-EAST-1_KMS_ENCRYPTED_BASE64_ENCODED_PEM_PASSWORD_HERE>|# |g' bless/config/bless_deploy.cfg
+          sed -i 's|us-west-2_password = <INSERT_US-EAST-1_KMS_ENCRYPTED_BASE64_ENCODED_PEM_PASSWORD_HERE>|# |g' bless/config/bless_deploy.cfg
+          sed -i 's|# default_password = <KMS_ENCRYPTED_BASE64_ENCODED_PEM_PASSWORD_HERE>|${AWS::Region}_password = '$(cat YourKmsEncryptedPassword.kms)' |g' bless/config/bless_deploy.cfg
+          sed -i 's|<INSERT_YOUR_ENCRYPTED_PEM_FILE_NAME>|bless-ca|g' bless/config/bless_deploy.cfg
+          mkdir lambda_configs
+          cp bless-ca ./lambda_configs/
+          chmod 444 ./lambda_configs/bless-ca
+          cp bless/config/bless_deploy.cfg ./lambda_configs/
+          make publish
+          aws s3 cp publish/bless_lambda.zip s3:://${ResultsBucket}
+          EOF
+ 
+#
+# Bucket to push Lambda zip
+#
+
+  ResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
