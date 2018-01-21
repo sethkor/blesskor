@@ -29,6 +29,7 @@ define cfn
         --template-body file://bless-cfn.yaml \
         --parameters \
            ParameterKey=ami,ParameterValue=$(ami) \
+           ParameterKey=iamprofile,ParameterValue=$(iamprofile) \
            ParameterKey=key,ParameterValue=$(key) \
            ParameterKey=kmsalias,ParameterValue=$(kmsalias) \
            ParameterKey=password,ParameterValue=$(password) \
