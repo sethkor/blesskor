@@ -1,8 +1,8 @@
-#!/bin/sh -xe
+#!/bin/sh
 
 # Install with Yum all our dependecies and make sure our AMI is all up to date
 sudo yum update -y
-sudo yum install -y git gcc libffi-devel openssl-devel docker fail2ban
+sudo yum install -y git gcc libffi-devel openssl-devel docker fail2ban python3
 sudo chkconfig fail2ban on
 
 # We also need Credstash for Secrets Management
@@ -13,7 +13,7 @@ git clone https://github.com/Netflix/bless.git
 
 #Build Bless
 cd bless
-virtualenv venv 
+python3.7 -m venv venv
 source venv/bin/activate
 make develop
 make test
