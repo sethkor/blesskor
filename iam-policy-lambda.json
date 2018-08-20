@@ -7,7 +7,7 @@
                 "kms:GenerateRandom",
                 "kms:ListAliases"
             ],
-            "Resource": "arn:aws:kms:ap-southeast-2:293499315857:alias/:sethkor",
+            "Resource": "arn:aws:kms:region:account:key",
             "Effect": "Allow"
         },
         {

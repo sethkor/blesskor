@@ -5,10 +5,12 @@
             "Action": [
                 "kms:CreateGrant",
                 "kms:GenerateRandom",
+                "kms:GenerateKey",
+                "kms:GenerateDataKey",
                 "kms:Encrypt",
                 "kms:ListAliases"
             ],
-            "Resource": "arn:aws:kms:ap-southeast-2:293499315857:alias/:sethkor",
+            "Resource": "arn:aws:kms:region:account:key",
             "Effect": "Allow"
         },
         {
@@ -27,7 +29,7 @@
             "Action": [
                 "iam:PassRole"
             ],
-            "Resource": "arn:aws:iam::293499315857:role/BastionIamLambdaRole",
+            "Resource": "arn:aws:iam::account:role/BastionIamLambdaRole",
             "Effect": "Allow"
         },
         {
@@ -38,14 +40,14 @@
                 "dynamodb:Scan",
                 "dynamodb:DeleteItem"
             ],
-            "Resource": "arn:aws:dynamodb:ap-southeast-2:293499315857:table/credential-store"
+            "Resource": "arn:aws:dynamodb:region:account:table/credential-store"
         },
         {
             "Action": [
                 "lambda:CreateFunction",
                 "lambda:DeleteFunction"
             ],
-            "Resource": "arn:aws:lambda:ap-southeast-2:293499315857:function:blesskor-bastion",
+            "Resource": "arn:aws:lambda:region:account:function:blesskor-bastion",
             "Effect": "Allow"
         }
         

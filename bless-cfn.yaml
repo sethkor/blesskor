@@ -11,7 +11,6 @@ Parameters:
     Description: The IAM instance profile for the bastion.
   key:
     Type: String
-    Description: Your host key
   kmsalias:
     Type: String
     Description: Your kms alias
@@ -103,13 +102,14 @@ Resources:
           #!/bin/bash -xe
           sudo -i -u ec2-user /bin/bash -xe << 'EOF'
           cd bless
-          virtualenv venv
+          #virtualenv venv
+          python3.7 -m venv venv
           source venv/bin/activate
           ssh-keygen -t rsa -b 4096 -f bless-ca -C "SSH CA Key" -N ${password}
-          /usr/local/bin/credstash -r ${AWS::Region} delete bless-ca.pem
-          /usr/local/bin/credstash -r ${AWS::Region} delete bless-ca.pub 
-          /usr/local/bin/credstash -r ${AWS::Region} put -k alias/sethkor bless-ca.pem @bless-ca
-          /usr/local/bin/credstash -r ${AWS::Region} put -k alias/sethkor bless-ca.pub @bless-ca.pub
+          /usr/bin/credstash -r ${AWS::Region} delete bless-ca.pem
+          /usr/bin/credstash -r ${AWS::Region} delete bless-ca.pub 
+          /usr/bin/credstash -r ${AWS::Region} put -k alias/${kmsalias} bless-ca.pem @bless-ca
+          /usr/bin/credstash -r ${AWS::Region} put -k alias/${kmsalias} bless-ca.pub @bless-ca.pub
           aws kms encrypt --region ${AWS::Region} --key-id alias/${kmsalias} --plaintext ${password} --output text --query CiphertextBlob > YourKmsEncryptedPassword.kms
           cp bless/config/bless_deploy_example.cfg bless/config/bless_deploy.cfg
           sed -i 's|us-east-1_password = <INSERT_US-EAST-1_KMS_ENCRYPTED_BASE64_ENCODED_PEM_PASSWORD_HERE>|# |g' bless/config/bless_deploy.cfg
@@ -123,7 +123,7 @@ Resources:
           aws s3 cp publish/bless_lambda.zip s3://${ResultsBucket}
           lambdaExists=$(aws lambda list-functions --region ${AWS::Region} --query 'Functions[?FunctionName==`blesskor-bastion`]' --output text)
           if [ "$lambdaExists" != "" ]; then aws lambda delete-function --region ${AWS::Region} --function-name blesskor-bastion; fi
-          aws lambda create-function --region ${AWS::Region} --function-name blesskor-bastion --runtime python2.7 --timeout 10 --role arn:aws:iam::293499315857:role/BastionLambdaIamRole --handler bless_lambda.lambda_handler --code S3Bucket=${ResultsBucket},S3Key=bless_lambda.zip
+          aws lambda create-function --region ${AWS::Region} --function-name blesskor-bastion --runtime python2.7 --timeout 10 --role arn:aws:iam::${AWS::AccountId}:role/BastionLambdaIamRole --handler bless_lambda.lambda_handler --code S3Bucket=${ResultsBucket},S3Key=bless_lambda.zip
           aws s3 rm s3://${ResultsBucket}/bless_lambda.zip
           EOF
           echo -e '\nTrustedUserCAKeys /etc/ssh/cas.pub' >> /etc/ssh/sshd_config

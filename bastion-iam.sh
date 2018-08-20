@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 #
 #    This script creates a Bastion IAM setup and associates to your KMS key
@@ -7,25 +7,33 @@
 
 function usage
 {
-    echo 
-"usage: create-bastion-iam.sh [-h]     --region APACHE_CONF
-                                    --project_name PROJECT_NAME
+    echo  "usage: bastion-iam.sh [-h]      --key KMS_KEY
+                                --profile AWS_PROFILE
+                                --region AWS_REGION 
+                                [-d --delete]
+                                [-h --help]
 "
 }
 
-project=""
-region=
+profile=""
+region=""
+delete="false";
+key=""
 
 
-echo "Checking Args"
 while [ "$1" != "" ]; do
     case $1 in
-        -p | --project_name )   shift
-                                project=$1
+        -k | --key )   					shift
+                                key=$1
+                                ;;
+        -p | --profile )   			shift
+                                profile=$1
                                 ;;
         -r | --region )         shift
                                 region=$1
                                 ;; 
+        -d | --delete )         delete="true"
+                                ;;                                
         -h | --help )           usage
                                 exit
                                 ;;
@@ -33,51 +41,40 @@ while [ "$1" != "" ]; do
     shift
 done
 
-if [ "$project" = "" ] || [ "$region" = "" ]
+if [ "$profile" = "" ] || [ "$region" = "" ] || [ "$delete" = "false" ] && [ "$key" = "" ]
 then
   usage
   exit
 fi
 
+account=$(aws --profile $profile sts get-caller-identity  --query 'Account' --output text)
 
-create-role --role-name BastionLambdaIamRole --assume-role-policy-document file://iam-role-lambda.json
-create-policy --policy-name BastionLambdaIamPolicy --path / --policy-document file://iam-policy-lambda.json
-aws iam attach-role-policy --role-name BastionLambdaIamRole --policy-arn arn:aws:iam::293499315857:policy/BastionLambdaIamPolicy
+if [ "$delete" = "false" ]
+then
+	set -x
+ 	aws --profile $profile iam create-role --role-name BastionLambdaIamRole --assume-role-policy-document file://iam-role-lambda.json
+ 	aws --profile $profile iam create-role --role-name BastionIamRole --assume-role-policy-document file://iam-role-ec2.json
+  aws --profile $profile iam create-policy --policy-name BastionLambdaIamPolicy --path / --policy-document "`sed \"s|account|"$account"|g\" iam-policy-lambda.json | sed \"s|region|"$region"|g\"`"
+ 	aws --profile $profile iam attach-role-policy --role-name BastionLambdaIamRole --policy-arn arn:aws:iam::$account:policy/BastionLambdaIamPolicy
+ 	aws --profile $profile iam create-instance-profile --instance-profile-name BlesskorBastionIamProfile
+ 	aws --profile $profile iam create-policy --policy-name BastionIamPolicy --path / --policy-document "`sed \"s|account|"$account"|g\" iam-policy-ec2.json | sed \"s|region|"$region"|g\" | sed \"s|key|key/"$key"|g\"`"
+	aws --profile $profile iam attach-role-policy --role-name BastionIamRole --policy-arn arn:aws:iam::$account:policy/BastionIamPolicy
+	aws --profile $profile iam add-role-to-instance-profile --instance-profile-name BlesskorBastionIamProfile --role-name BastionIamRole
+	sleep 5
+	aws --profile $profile kms --region $region create-grant --key-id arn:aws:kms:$region:$account:key/$key --grantee-principal arn:aws:iam::$account:role/BastionLambdaIamRole --operations Decrypt
+	aws --profile $profile kms --region $region create-grant --key-id arn:aws:kms:$region:$account:key/$key --grantee-principal arn:aws:iam::$account:role/BastionIamRole --operations Encrypt
+	set +x
 
-aws iam create-instance-profile --instance-profile-name BlesskorBastionIamProfile
-aws iam create-role --role-name BastionIamRole --assume-role-policy-document file://iam-role.json
-aws iam create-policy --policy-name BastionIamPolicy --path / --policy-document file://iam-policy.json
-aws iam attach-role-policy --role-name BastionIamRole --policy-arn arn:aws:iam::293499315857:policy/BastionIamPolicy
-aws iam add-role-to-instance-profile --instance-profile-name BlesskorBastionIamProfile --role-name BastionIamRole
+else
+	set -x
+	aws --profile $profile iam detach-role-policy --role-name BastionLambdaIamRole --policy-arn arn:aws:iam::$account:policy/BastionLambdaIamPolicy
+	aws --profile $profile iam delete-role --role-name BastionLambdaIamRole
+	aws --profile $profile iam delete-policy --policy-arn arn:aws:iam::$account:policy/BastionLambdaIamPolicy	
+	aws --profile $profile iam remove-role-from-instance-profile --instance-profile-name BlesskorBastionIamProfile --role-name BastionIamRole
+	aws --profile $profile iam detach-role-policy --role-name BastionIamRole --policy-arn arn:aws:iam::$account:policy/BastionIamPolicy
+	aws --profile $profile iam delete-role --role-name BastionIamRole
+	aws --profile $profile iam delete-policy --policy-arn arn:aws:iam::$account:policy/BastionIamPolicy
+	aws --profile $profile iam delete-instance-profile --instance-profile-name BlesskorBastionIamProfile
+	set +x
+fi
 
-aws kms --region ap-southeast-2 create-grant --key-id arn:aws:kms:ap-southeast-2:293499315857:alias/sethkor --grantee-principal ${BastionInstanceProfile.Arn} --operations Encrypt
-
-
-aws iam remove-role-from-instance-profile --instance-profile-name BlesskorBastionIamProfile --role-name BastionIamRole
-aws iam detach-role-policy --role-name BastionIamRole --policy-arn arn:aws:iam::293499315857:policy/BastionIamPolicy
-aws iam delete-role --role-name BastionIamRole
-aws iam delete-policy --policy-arn arn:aws:iam::293499315857:policy/BastionIamPolicy
-aws iam delete-instance-profile --instance-profile-name BlesskorBastionIamProfile
-aws kms --region ap-southeast-2 create-grant --key-id arn:aws:kms:ap-southeast-2:293499315857:key/c2af3c33-c3ff-4fba-bbce-a6ed4ad0865b --grantee-principal arn:aws:iam::293499315857:role/BastionLambdaIamRole --operations Decrypt
-
-
-aws iam detach-role-policy --role-name BastionLambdaIamRole --policy-arn arn:aws:iam::293499315857:policy/BastionLambdaIamPolicy
-aws iam delete-role --role-name BastionLambdaIamRole
-aws iam delete-policy --policy-arn arn:aws:iam::293499315857:policy/BastionLambdaIamPolicy
-
-
-# #Create the VPC
-# vpcid=$(aws ec2 create-vpc --region us-east-1 --cidr-block 10.0.0.0/16 | jq '.Vpc.VpcId' | tr -d '"')
-# 
-# #Store the vppc name into credstash
-# credstash delete boinc.$project.vpc.$region
-# credstash put boinc.$project.vpc.$region $vpcid
-# 
-# #Tag the VPC with a Name
-# aws ec2 create-tags --region $region --resources $vpcid --tags Key=Name,Value="Boinc Spot Fleet"
-# 
-# #Add the extra CIDR blocks
-# aws ec2 associate-vpc-cidr-block --region $region --cidr-block 10.1.0.0/16 --vpc-id $vpcid
-# aws ec2 associate-vpc-cidr-block --region $region --cidr-block 10.2.0.0/16 --vpc-id $vpcid
-# aws ec2 associate-vpc-cidr-block --region $region --cidr-block 10.3.0.0/16 --vpc-id $vpcid
-# aws ec2 associate-vpc-cidr-block --region $region --cidr-block 10.4.0.0/16 --vpc-id $vpcid

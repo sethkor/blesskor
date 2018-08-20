@@ -14,12 +14,6 @@ cfn-resume: _validate-stack-name _validate-profile
 	
 cfn-delete: _validate-stack-name _validate-profile
 	aws cloudformation delete-stack --profile $(PROFILE) --region $(region) --stack-name $(STACK-NAME)
-
-ep-create: _validate-stack-name _validate-profile
-	./create-interface-endpoints.sh -r $(region) -s $(STACK-NAME)
-
-ep-delete: _validate-stack-name _validate-profile
-	./delete-interface-endpoints.sh -r $(region) -s $(STACK-NAME)
 	
 define cfn
 	aws cloudformation $1 --profile $(PROFILE) \
