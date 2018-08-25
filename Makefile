@@ -14,6 +14,9 @@ cfn-resume: _validate-stack-name _validate-profile
 	
 cfn-delete: _validate-stack-name _validate-profile
 	aws cloudformation delete-stack --profile $(PROFILE) --region $(region) --stack-name $(STACK-NAME)
+
+cfn-status: _validate-stack-name _validate-profile
+	aws cloudformation describe-stacks --profile $(PROFILE) --region $(region) --stack-name $(STACK-NAME) --query 'Stacks[].StackStatus' --output text
 	
 define cfn
 	aws cloudformation $1 --profile $(PROFILE) \
@@ -28,11 +31,9 @@ define cfn
            ParameterKey=kmsalias,ParameterValue=$(kmsalias) \
            ParameterKey=password,ParameterValue=$(password) \
            ParameterKey=subnets,ParameterValue=\"$(subnets)\" \
-           ParameterKey=public,ParameterValue=$(public) \
            ParameterKey=user,ParameterValue=$(user) \
            ParameterKey=yourcidr,ParameterValue=$(yourcidr) \
-           ParameterKey=vpc,ParameterValue=$(vpc) \
-           ParameterKey=zone,ParameterValue=$(zone)
+           ParameterKey=vpc,ParameterValue=$(vpc)
 endef
 
 _validate-stack-name:

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Automated BLESS CFN'
+Description: 'Automated BLESS CFN by sethkor'
 
 # Input Parameters
 Parameters:
@@ -20,11 +20,7 @@ Parameters:
   password:
     Type: String
     Description: Password for your key.
-    NoEcho: true
-  public:
-    Type: String
-    Description: Do you wnt a public IP for this bastion?.
-    Default: false    
+    NoEcho: true 
   user:
     Type: String
     Description: The user this bastion is for.   
@@ -34,17 +30,21 @@ Parameters:
   yourcidr:
     Type: String
     Description: The CIDR fromwhich you are connecting to the Bastion   
-  zone:
-    Type: String
-    Description: The DNS zone to use when creating a dns entry.  If this is blank, no entry will be created.
     
 Resources:
 
+#
+# Create an Elastic IP for your bastion.  This will mean if you terminate your bastion and
+# it is recreated via the auto scaling group it will always have the same public IP
+#
   EIP:
     Type: AWS::EC2::EIP
     Properties:
       Domain: !Ref vpc
 
+#
+# Security group for bastion access.  It will allow access from you IP
+#
   BastionSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -56,14 +56,13 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref yourcidr
-        - IpProtocol: icmp
-          FromPort: 3
-          ToPort: 4
-          CidrIp: 10.0.0.0/16
       Tags:
         - Key: Name
           Value: !Join [-, [bastion-sg, !Ref user]]
 
+#
+# Autoscaling group for the Bastion.  Make sure there is always 1 bastion running
+#
   BastionAsg:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -87,14 +86,21 @@ Resources:
           PropagateAtLaunch: true
       VPCZoneIdentifier: !Ref subnets
 
+#
+# Launch config for the Bastion.  It will generate a new set of keys and publish the
+# lambda each time a new bastion is created via the Auto Scaling Group.  KeyName is 
+# commented out as it's not needed unlessss you are trying to debug bless config on 
+# the bastion.  If you enable it it can lead to false positives when testing and using
+# BLESS.  if you uncomment it be sure to add a key value in the env.mk file
+#
   BastionLc:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      AssociatePublicIpAddress: !Ref public
+      AssociatePublicIpAddress: true
       IamInstanceProfile: !Ref iamprofile
       ImageId: !Ref ami
       InstanceType: t2.micro
-      KeyName: !Ref key
+#      KeyName: !Ref key
       SecurityGroups:
         - !GetAtt BastionSecurityGroup.GroupId
       UserData: 
@@ -120,11 +126,11 @@ Resources:
           chmod 444 ./lambda_configs/bless-ca
           cp bless/config/bless_deploy.cfg ./lambda_configs/
           make publish
-          aws s3 cp publish/bless_lambda.zip s3://${ResultsBucket}
+          aws s3 cp publish/bless_lambda.zip s3://${LambdaBucket}
           lambdaExists=$(aws lambda list-functions --region ${AWS::Region} --query 'Functions[?FunctionName==`blesskor-bastion`]' --output text)
           if [ "$lambdaExists" != "" ]; then aws lambda delete-function --region ${AWS::Region} --function-name blesskor-bastion; fi
-          aws lambda create-function --region ${AWS::Region} --function-name blesskor-bastion --runtime python2.7 --timeout 10 --role arn:aws:iam::${AWS::AccountId}:role/BastionLambdaIamRole --handler bless_lambda.lambda_handler --code S3Bucket=${ResultsBucket},S3Key=bless_lambda.zip
-          aws s3 rm s3://${ResultsBucket}/bless_lambda.zip
+          aws lambda create-function --region ${AWS::Region} --function-name blesskor-bastion --runtime python3.6 --timeout 10 --role arn:aws:iam::${AWS::AccountId}:role/BastionLambdaIamRole --handler bless_lambda.lambda_handler --code S3Bucket=${LambdaBucket},S3Key=bless_lambda.zip
+          aws s3 rm s3://${LambdaBucket}/bless_lambda.zip
           EOF
           echo -e '\nTrustedUserCAKeys /etc/ssh/cas.pub' >> /etc/ssh/sshd_config
           cat /home/ec2-user/bless/bless-ca.pub > /etc/ssh/cas.pub
@@ -135,7 +141,7 @@ Resources:
 # Bucket to push Lambda zip
 #
 
-  ResultsBucket:
+  LambdaBucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private

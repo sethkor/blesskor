@@ -1,11 +1,10 @@
-key=bless
+key=
 kmsalias=blesskorkms
-subnets=subnet-0ef30901,subnet-0ef30901,subnet-8d437ac6,subnet-8d437ac6,subnet-8d437ac6,subnet-8d437ac6
+subnets=/*Put your comma seperated bastions subnets here like this subnet-0ef30901,subnet-3113631e,subnet-8d437ac6 */
 public=true
-user=seth
+user=sethkor
 yourcidr=$(shell curl -s http://checkip.amazonaws.com/)/32
-vpc=vpc-b8ccd7c0
-zone=sethkor.com
+vpc=/*Put your VPC ID here*/
 PROFILE=sethkor-bless
 STACK-NAME=blesskor
 region=us-east-1

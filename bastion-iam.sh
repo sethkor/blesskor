@@ -1,13 +1,14 @@
 #!/bin/bash
 
 #
-#    This script creates a Bastion IAM setup and associates to your KMS key
+#    This script creates a Bastion IAM setup and associates to your KMS key for use
+#	   by BLESS
 #
 
 
 function usage
 {
-    echo  "usage: bastion-iam.sh [-h]      --key KMS_KEY
+    echo  "usage: bastion-iam.sh           --key KMS_KEY_ID
                                 --profile AWS_PROFILE
                                 --region AWS_REGION 
                                 [-d --delete]
@@ -60,6 +61,7 @@ then
  	aws --profile $profile iam create-policy --policy-name BastionIamPolicy --path / --policy-document "`sed \"s|account|"$account"|g\" iam-policy-ec2.json | sed \"s|region|"$region"|g\" | sed \"s|key|key/"$key"|g\"`"
 	aws --profile $profile iam attach-role-policy --role-name BastionIamRole --policy-arn arn:aws:iam::$account:policy/BastionIamPolicy
 	aws --profile $profile iam add-role-to-instance-profile --instance-profile-name BlesskorBastionIamProfile --role-name BastionIamRole
+	#The above add-role-to-instance-profile command takes a few seconds to take hold so we have a little sleep here
 	sleep 5
 	aws --profile $profile kms --region $region create-grant --key-id arn:aws:kms:$region:$account:key/$key --grantee-principal arn:aws:iam::$account:role/BastionLambdaIamRole --operations Decrypt
 	aws --profile $profile kms --region $region create-grant --key-id arn:aws:kms:$region:$account:key/$key --grantee-principal arn:aws:iam::$account:role/BastionIamRole --operations Encrypt
