@@ -28,7 +28,7 @@ define cfn
            ParameterKey=ami,ParameterValue=$(ami) \
            ParameterKey=iamprofile,ParameterValue=$(iamprofile) \
            ParameterKey=key,ParameterValue=$(key) \
-           ParameterKey=kmsalias,ParameterValue=$(kmsalias) \
+           ParameterKey=kmskey,ParameterValue=$(kmskey) \
            ParameterKey=password,ParameterValue=$(password) \
            ParameterKey=subnets,ParameterValue=\"$(subnets)\" \
            ParameterKey=user,ParameterValue=$(user) \
