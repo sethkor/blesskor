@@ -1,0 +1,46 @@
+{
+  "variables": {
+    "aws_access_key": "",
+    "aws_secret_key": ""
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "region": "us-east-1",
+    "source_ami_filter": {
+      "filters": {
+      "virtualization-type": "hvm",
+      "name": "amzn2-ami*-ebs",
+      "root-device-type": "ebs"
+      },
+      "owners": ["137112412989"],
+      "most_recent": true
+    },
+    "instance_type": "c4.large",
+    "spot_price" : "0.1",
+    "ssh_username": "ec2-user",
+    "ami_name": "Blesskor Bastion",
+    "force_delete_snapshot": "true",
+    "force_deregister": "true",
+    "run_tags" : {
+    	"project" : "blesskor",
+    	"user" : "sethkor"
+    },
+    "run_volume_tags": {
+    	"project" : "blesskor",
+    	"user" : "sethkor"
+    },
+    "snapshot_tags": {
+    	"project" : "blesskor",
+    	"user" : "sethkor"
+    },   
+    "tags": {
+    	"project" : "blesskor",
+    	"user" : "sethkor",
+    	"Name" : "Blesskor Bastion" 
+    }   
+  }],
+	"provisioners": [{
+		"type": "shell",
+		"script" : "user_data.sh"
+	}]
+}

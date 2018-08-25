@@ -1,15 +1,13 @@
-ami=$(shell aws ec2 describe-images --filters "Name=name,Values=Blesskor Bastion" --region ap-southeast-2 --owner 293499315857  --query 'sort_by(Images, &CreationDate) | [-1].ImageId' --output text)
-#$(shell aws ec2 describe-images --filters "Name=name,Values=amzn-ami-hvm-????.??.?.x86_64-gp2" --region ap-southeast-2 --owners amazon --query 'sort_by(Images, &CreationDate) | [-1].ImageId' --output text)
-key=sethsyd1018
-kmsalias=sethkor
-subnets=subnet-594dee10,subnet-2bd4644c,subnet-f65855af
+key=
+kmskey=<Put your KMS key ID here>
+subnets=<Put your comma seperated bastions subnets here like this subnet-0ef30901,subnet-3113631e,subnet-8d437ac6>
 public=true
-user=seth
-yourcidr=115.69.50.209/32
-#yourcidr=49.255.206.98/32
-vpc=vpc-bfd836d8
-zone=sethkor.com
-PROFILE=default
+user=sethkor
+yourcidr=$(shell curl -s http://checkip.amazonaws.com/)/32
+vpc=<Put your VPC ID here>
+PROFILE=<YOUR-AWS-PROFILE>
 STACK-NAME=blesskor
-region=ap-southeast-2
-iamprofile=arn:aws:iam::293499315857:instance-profile/BlesskorBastionIamProfile
+region=<YOUR-AWS-REGION>
+account=$(shell aws --profile $(PROFILE) sts get-caller-identity  --query 'Account' --output text)
+ami=$(shell aws --profile $(PROFILE) ec2 describe-images --filters "Name=name,Values=Blesskor Bastion" --region $(region) --owner $(account)  --query 'sort_by(Images, &CreationDate) | [-1].ImageId' --output text)
+iamprofile=arn:aws:iam::$(account):instance-profile/BlesskorBastionIamProfile

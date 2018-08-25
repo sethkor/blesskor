@@ -1,0 +1,55 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "kms:CreateGrant",
+                "kms:GenerateRandom",
+                "kms:GenerateKey",
+                "kms:GenerateDataKey",
+                "kms:Encrypt",
+                "kms:ListAliases"
+            ],
+            "Resource": "arn:aws:kms:region:account:key",
+            "Effect": "Allow"
+        },
+        {
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject",
+                "iam:PassRole",
+                "ec2:AssociateAddress",
+                "lambda:ListFunctions"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        },
+        {
+            "Action": [
+                "iam:PassRole"
+            ],
+            "Resource": "arn:aws:iam::account:role/BastionIamLambdaRole",
+            "Effect": "Allow"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:DeleteItem"
+            ],
+            "Resource": "arn:aws:dynamodb:region:account:table/credential-store"
+        },
+        {
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:DeleteFunction"
+            ],
+            "Resource": "arn:aws:lambda:region:account:function:blesskor-bastion",
+            "Effect": "Allow"
+        }
+        
+    ]
+}
