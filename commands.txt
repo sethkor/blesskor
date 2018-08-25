@@ -1,0 +1,7 @@
+ssh-keygen -R your_bastions_ip_address
+credstash --profile bless get bless-ca.pem > bless-ca.pem
+credstash --profile bless get bless-ca.pub > bless-ca.pub
+chmod 400 bless-ca.pem
+ssh-add -K bless-ca.pem
+./bless_client.py ap-southeast-2 blesskor-bastion ec2-user your_bastions_ip_address ec2-user your_ip_address ssh bless-ca.pub result.pub
+ssh -i result.pub ec2-user@your_bastions_ip_address
