@@ -109,18 +109,18 @@ ssh - result.pub ecs-user@<YOUR-BASTION-IP-ADDRESS>
 
 You should be connected to your bastion now!
 
-##Troubleshooting
+## Troubleshooting
 
-###Validating certificates
+### Validating certificates
 
 ```
 ssh-keygen -L -f /etc/ssh/cas.pub #or path to cert
 ```
 
-###Debugging the bastion host
+### Debugging the bastion host
 If you are having trouble connecting to the bastion with the public certific, you can add a SSH key pair to the host so that you can ssh into it the normal way and debug sshd from there.  But beware when doing this as you are effectivly bypassing the whole point of BLESS by not having ssh key pairs.  To add a key set the key paramater in env.mk.  Then edit the cloud formation yaml file ```bless-cfn.yaml``` and uncomment the line `KeyName` from the launch configuration.  You can update the CFN with this stack via ```make cfn-update password=<YOUR-PASSWORD-HERE>``` or delete the stack and recreate from scratch.  If you choose to just update the stack terminate the existing bastion once the stack update is complete so that a new bastion is created with the auto scaling group with the key pair you have specified.  Once you have finished your debugging, remove the keypair from the env.mk and follow the update stack steps again in order to recreate a bastion without a key pair and test BLESS properly.
 
-###Debugging Certificate Validation
+### Debugging Certificate Validation
 On bastion host, edit the /etc/sysconfig/sshd file  add the following line to anywhere in the file
 
 ```
@@ -129,7 +129,7 @@ OPTIONS="-ddd"
 
 Save and quit, Then restart the service sudo service sshd restart command.  Tail the ```/var/log/messages``` file.  you'll need to be a privedledged user (root) to do that.
 
-###Too many authentication failures
+### Too many authentication failures
 Your ssh agent has too many stored keys.  You need to flush it.  To see the keys stored type:
 
 ```
@@ -143,6 +143,6 @@ ssh-add -D
 ssh-add -K bless-ca.pem
 ```
 
-###The security token included in the request is invalid
+### The security token included in the request is invalid
 If you get this when invoking bless_client.py it's ususally because bless_client.py is picking the wrong AWS\_PROFILE to use and is not executing the lambda in the correct account.  Try setting AWS\_PROFILE environment vairable to your AWS\_PROFILE.  You can also copy paste the payload json into a test event in the AWS lambda console and test it there.
 
