@@ -5,7 +5,8 @@ sudo yum update -y
 sudo yum install -y git gcc libffi-devel openssl-devel docker python3 python-pip zip
 
 # We also need awscli and Credstash for Secrets Management
-sudo pip install credstash awscli
+sudo pip install awscli
+sudo pip install credstash
 
 # Clone the repo
 git clone https://github.com/Netflix/bless.git
