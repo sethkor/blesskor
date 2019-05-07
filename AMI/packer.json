@@ -1,4 +1,5 @@
 {
+
   "builders": [{
     "type": "amazon-ebs",
     "region": "us-east-1",
