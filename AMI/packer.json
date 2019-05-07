@@ -1,15 +1,12 @@
 {
-  "variables": {
-    "aws_access_key": "",
-    "aws_secret_key": ""
-  },
+
   "builders": [{
     "type": "amazon-ebs",
     "region": "us-east-1",
     "source_ami_filter": {
       "filters": {
       "virtualization-type": "hvm",
-      "name": "amzn2-ami*-ebs",
+      "name": "amzn2-ami*x86_64-ebs",
       "root-device-type": "ebs"
       },
       "owners": ["137112412989"],

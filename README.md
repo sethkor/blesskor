@@ -113,6 +113,7 @@ You should be connected to your bastion now!
 
 ### Validating certificates
 
+
 ```
 ssh-keygen -L -f /etc/ssh/cas.pub #or path to cert
 ```
@@ -128,6 +129,7 @@ OPTIONS="-ddd"
 ```
 
 Save and quit, Then restart the service sudo service sshd restart command.  Tail the ```/var/log/messages``` file.  you'll need to be a privedledged user (root) to do that.
+
 
 ### Too many authentication failures
 Your ssh agent has too many stored keys.  You need to flush it.  To see the keys stored type:
